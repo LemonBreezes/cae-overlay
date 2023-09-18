@@ -27,4 +27,6 @@ src_compile() {
 src_install() {
 	einstalldocs
 	dobin goimapnotify
+	insinto /usr/lib/systemd/user
+	doins "${FILESDIR}/goimapnotify@.service"
 }
