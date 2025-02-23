@@ -236,6 +236,7 @@ src_configure() {
 		--with-file-notification=$(usev inotify || usev gfile || echo no)
 		--with-pdumper
 		--with-mps=yes
+		--disable-gc-mark-trace
 		--enable-checking=igc_debug
 		$(use_enable acl)
 		$(use_enable xattr)
