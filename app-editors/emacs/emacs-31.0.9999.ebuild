@@ -237,7 +237,6 @@ src_configure() {
 		--with-pdumper
 		--with-mps=yes
 		--disable-gc-mark-trace
-		--enable-checking=igc_debug
 		$(use_enable acl)
 		$(use_enable xattr)
 		$(use_with dbus)
