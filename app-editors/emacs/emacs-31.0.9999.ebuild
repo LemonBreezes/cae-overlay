@@ -33,7 +33,7 @@ else
 	fi
 	SLOT="${PV%%.*}"
 	[[ ${PV} == *.*.* ]] && SLOT+="-vcs"
-	KEYWORDS="~alpha ~amd64 ~arm ~arm64 ~hppa ~m68k ~mips ~ppc ~ppc64 ~riscv ~sparc ~x86 ~amd64-linux ~x86-linux ~ppc-macos ~x64-macos"
+	KEYWORDS="~alpha ~amd64 ~arm ~arm64 ~hppa ~loong ~m68k ~mips ~ppc ~ppc64 ~riscv ~sparc ~x86 ~amd64-linux ~x86-linux ~ppc-macos ~x64-macos"
 fi
 
 DESCRIPTION="The extensible, customizable, self-documenting real-time display editor"
@@ -203,9 +203,6 @@ src_prepare() {
 		fi
 	fi
 
-	# Fix filename reference in redirected man page
-	sed -i -e "/^\\.so/s/etags/&-${EMACS_SUFFIX}/" doc/man/ctags.1 || die
-
 	# libseccomp is detected by configure but doesn't appear to have any
 	# effect on the installed image. Suppress it by supplying pkg-config
 	# with a wrong library name.
@@ -233,6 +230,7 @@ src_configure() {
 		--without-compress-install
 		--without-hesiod
 		--without-pop
+		--without-systemduserunitdir
 		--with-file-notification=$(usev inotify || usev gfile || echo no)
 		--with-pdumper
 		--with-mps=yes
@@ -445,22 +443,12 @@ src_test() {
 		# Reason: tries to access network
 		# internet-is-working
 		%src/process-tests.el
-
-		# Reason: fails with stable version of tree-sitter-json due to
-		# ast changes. Bug #922525
-		%src/treesit-tests.log
-
-		# Reason: test is not skipped if tree-sitter-tsx is not installed
-		# Bug #922525
-		%lisp/progmodes/typescript-ts-mode-tests.el
 	)
 	use threads || exclude_tests+=(
-			%lisp/server-tests.el
 			%lisp/progmodes/eglot-tests.el
 			%src/emacs-module-tests.el
 			%src/keyboard-tests.el
 		)
-	use xpm || exclude_tests+=( %src/image-tests.el )
 
 	# Redirect GnuPG's sockets, in order not to exceed the 108 char limit
 	# for socket paths on Linux.
@@ -506,7 +494,6 @@ src_install() {
 	rm "${ED}"/usr/share/emacs/site-lisp/subdirs.el || die
 	rm -rf "${ED}"/usr/share/{applications,icons} || die
 	rm -rf "${ED}"/usr/share/glib-2.0 || die #911117
-	rm -rf "${ED}/usr/$(get_libdir)/systemd" || die
 	rm -rf "${ED}"/var || die
 
 	# remove unused <version>/site-lisp dir
@@ -514,15 +501,6 @@ src_install() {
 
 	# remove COPYING file (except for etc/COPYING used by describe-copying)
 	rm "${ED}"/usr/share/emacs/${FULL_VERSION}/lisp/COPYING || die
-
-	if use systemd; then
-		insinto /usr/lib/systemd/user
-		sed -e "/^##/d" \
-			-e "/^ExecStart/s,emacs,${EPREFIX}/usr/bin/${EMACS_SUFFIX}," \
-			-e "/^ExecStop/s,emacsclient,${EPREFIX}/usr/bin/&-${EMACS_SUFFIX}," \
-			etc/emacs.service | newins - ${EMACS_SUFFIX}.service
-		pipestatus || die
-	fi
 
 	if use gzip-el; then
 		# compress .el files when a corresponding .elc exists
