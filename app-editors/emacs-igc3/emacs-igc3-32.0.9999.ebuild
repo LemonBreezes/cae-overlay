@@ -1,17 +1,22 @@
-# Copyright 1999-2025 Gentoo Authors
+# Copyright 1999-2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=8
+EAPI=9
 
-inherit autotools eapi9-pipestatus elisp-common flag-o-matic readme.gentoo-r1 toolchain-funcs
+inherit autotools elisp-common flag-o-matic readme.gentoo-r1 toolchain-funcs
 
 if [[ ${PV##*.} = 9999 ]]; then
 	inherit git-r3
-	EGIT_REPO_URI="https://git.savannah.gnu.org/git/emacs.git"
-	EGIT_BRANCH="feature/igc"
+	# emacs-mirror is the GitHub mirror of the GNU repo. The feature/igc3 branch
+	# is the third iteration of Eli/Pip's MPS-based incremental/generational
+	# garbage collector. Upstream version on this branch is 32.0.50 (master-based),
+	# hence PV=32.0.9999 here.
+	EGIT_REPO_URI="https://github.com/emacs-mirror/emacs.git"
+	EGIT_BRANCH="feature/igc3"
 	EGIT_CHECKOUT_DIR="${WORKDIR}/emacs"
 	S="${EGIT_CHECKOUT_DIR}"
-	SLOT="${PV%%.*}-vcs"
+	# Distinct slot so this coexists with app-editors/emacs:32-vcs when that lands.
+	SLOT="${PV%%.*}-igc3"
 else
 	# FULL_VERSION keeps the full version number, which is needed in
 	# order to determine some path information correctly for copy/move
@@ -33,14 +38,14 @@ else
 	fi
 	SLOT="${PV%%.*}"
 	[[ ${PV} == *.*.* ]] && SLOT+="-vcs"
-	KEYWORDS="~alpha ~amd64 ~arm ~arm64 ~hppa ~loong ~m68k ~mips ~ppc ~ppc64 ~riscv ~sparc ~x86 ~amd64-linux ~x86-linux ~ppc-macos ~x64-macos"
+	KEYWORDS="~alpha ~amd64 ~arm ~arm64 ~hppa ~loong ~m68k ~mips ~ppc ~ppc64 ~riscv ~sparc ~x86 ~x64-macos"
 fi
 
-DESCRIPTION="The extensible, customizable, self-documenting real-time display editor"
+DESCRIPTION="The advanced, extensible, customizable, self-documenting editor"
 HOMEPAGE="https://www.gnu.org/software/emacs/"
 
-LICENSE="GPL-3+ FDL-1.3+ BSD HPND MIT W3C unicode PSF-2"
-IUSE="acl alsa aqua athena cairo dbus dynamic-loading games gfile gif +gmp gpm gsettings gtk gui gzip-el harfbuzz imagemagick +inotify jit jpeg kerberos lcms libxml2 livecd m17n-lib mailutils motif png selinux sound source sqlite ssl svg systemd +threads tiff toolkit-scroll-bars tree-sitter valgrind webp wide-int +X xattr Xaw3d xft +xpm zlib"
+LICENSE="GPL-3+ FDL-1.3+ Boost-1.0 BSD CC-BY-SA-3.0 CC-BY-SA-4.0 HPND MIT MPL-2.0 PCRE PSF-2 unicode W3C"
+IUSE="acl alsa aqua athena cairo dbus dynamic-loading games gfile gif +gmp gpm gsettings gtk gui gzip-el harfbuzz imagemagick +inotify jit jpeg kerberos lcms libxml2 livecd m17n-lib mailutils motif +mps png selinux sound source sqlite ssl svg systemd +threads tiff toolkit-scroll-bars tree-sitter valgrind webp wide-int +X xattr Xaw3d xft +xpm zlib"
 
 X_DEPEND="x11-libs/libICE
 	x11-libs/libSM
@@ -67,10 +72,10 @@ X_DEPEND="x11-libs/libICE
 			>=dev-libs/m17n-lib-1.5.1
 		)
 	)
-	gtk? ( x11-libs/gtk+:3 )
+	gtk? ( x11-libs/gtk+:3[X] )
 	!gtk? (
 		motif? (
-			>=x11-libs/motif-2.3:0
+			>=x11-libs/motif-2.3:0=
 			x11-libs/libXpm
 			x11-libs/libXmu
 			x11-libs/libXt
@@ -89,8 +94,7 @@ X_DEPEND="x11-libs/libICE
 		)
 	)"
 
-RDEPEND="app-emacs/emacs-common[games?,gui(-)?]
-	dev-libs/libmps
+RDEPEND=">=app-emacs/emacs-common-1.11[games?,gui?]
 	sys-libs/ncurses:0=
 	acl? ( virtual/acl )
 	alsa? ( media-libs/alsa-lib )
@@ -101,21 +105,24 @@ RDEPEND="app-emacs/emacs-common[games?,gui(-)?]
 	!inotify? ( gfile? ( >=dev-libs/glib-2.28.6 ) )
 	jit? (
 		sys-devel/gcc:=[jit(-)]
-		sys-libs/zlib
+		virtual/zlib:=
 	)
 	kerberos? ( virtual/krb5 )
 	lcms? ( media-libs/lcms:2 )
-	libxml2? ( >=dev-libs/libxml2-2.2.0 )
+	libxml2? ( >=dev-libs/libxml2-2.2.0:= )
 	mailutils? ( net-mail/mailutils[clients] )
 	!mailutils? ( acct-group/mail net-libs/liblockfile )
 	selinux? ( sys-libs/libselinux )
 	sqlite? ( dev-db/sqlite:3 )
 	ssl? ( net-libs/gnutls:0= )
 	systemd? ( sys-apps/systemd )
-	tree-sitter? ( dev-libs/tree-sitter:= )
+	tree-sitter? (
+		dev-libs/tree-sitter:=
+		dev-libs/tree-sitter-jsdoc
+	)
 	valgrind? ( dev-debug/valgrind )
 	xattr? ( sys-apps/attr )
-	zlib? ( sys-libs/zlib )
+	zlib? ( virtual/zlib:= )
 	gui? (
 		gif? ( media-libs/giflib:0= )
 		jpeg? ( media-libs/libjpeg-turbo:0= )
@@ -126,7 +133,7 @@ RDEPEND="app-emacs/emacs-common[games?,gui(-)?]
 		imagemagick? ( media-gfx/imagemagick:0=[jpeg?,png?,svg?,tiff?] )
 		!aqua? (
 			gsettings? (
-				app-emacs/emacs-common[gsettings(-)]
+				>=app-emacs/emacs-common-1.11[gsettings]
 				>=dev-libs/glib-2.28.6
 			)
 			gtk? ( !X? (
@@ -218,6 +225,13 @@ src_prepare() {
 }
 
 src_configure() {
+	# We want floating-point arithmetic to be correct #933380
+	replace-flags -Ofast -O2
+	append-flags -fno-fast-math -ffp-contract=off
+
+	export ac_cv_header_valgrind_valgrind_h=$(usex valgrind)
+	append-cppflags -DUSE_VALGRIND=$(usex valgrind)
+
 	# Prevents e.g. tests interfering with running Emacs.
 	unset EMACS_SOCKET_NAME
 
@@ -233,8 +247,6 @@ src_configure() {
 		--without-systemduserunitdir
 		--with-file-notification=$(usev inotify || usev gfile || echo no)
 		--with-pdumper
-		--with-mps=yes
-		--disable-gc-mark-trace
 		$(use_enable acl)
 		$(use_enable xattr)
 		$(use_with dbus)
@@ -247,6 +259,10 @@ src_configure() {
 		$(use_with lcms lcms2)
 		$(use_with libxml2 xml2)
 		$(use_with mailutils)
+		# MPS-based incremental/generational GC. The feature/igc3 tree ships
+		# Ravenbrook MPS in the `mps/` subdir and the build compiles mps.o
+		# directly from mps/code/mps.c, so no external libmps dep is needed.
+		$(usex mps --with-mps=yes --with-mps=no)
 		$(use_with selinux)
 		$(use_with sqlite sqlite3)
 		$(use_with ssl gnutls)
@@ -340,14 +356,16 @@ src_configure() {
 		if use gtk; then
 			einfo "Configuring to build with GIMP Toolkit (GTK+)"
 			while read line; do ewarn "${line}"; done <<-EOF
-				Your version of GTK+ will have problems with closing open
-				displays. This is no problem if you just use one display, but
-				if you use more than one and close one of them Emacs may crash.
-				See <https://gitlab.gnome.org/GNOME/gtk/-/issues/221> and
+				There is a long-standing bug in GTK+ that prevents Emacs
+				from recovering from X disconnects:
+				<https://gitlab.gnome.org/GNOME/gtk/-/issues/221> and
 				<https://gitlab.gnome.org/GNOME/gtk/-/issues/2315>.
-				If you intend to use more than one display, then it is strongly
-				recommended that you compile Emacs with the Athena/Lucid or the
-				Motif toolkit instead.
+				This is not a problem if you use only one display, but if
+				you use more than one and close one of them, Emacs may crash.
+				If you intend to use more than one display or to run Emacs
+				as a daemon, then it is strongly recommended that you compile
+				it with the Athena/Lucid or the Motif toolkit instead,
+				i.e. with USE="athena Xaw3d -gtk -motif" or USE="motif -gtk".
 			EOF
 			myconf+=( --with-x-toolkit=gtk3 --without-xwidgets )
 			for f in motif Xaw3d athena; do
@@ -390,9 +408,9 @@ src_configure() {
 		popd >/dev/null || die
 		# Don't try to execute the binary for dumping during the build
 		myconf+=( --with-dumping=none )
-	elif use m68k; then
-		# Workaround for https://debbugs.gnu.org/44531
-		myconf+=( --with-dumping=unexec )
+	#elif use m68k; then
+	#	# Workaround for https://debbugs.gnu.org/44531
+	#	myconf+=( --with-dumping=unexec )
 	else
 		myconf+=( --with-dumping=pdumper )
 	fi
@@ -401,8 +419,7 @@ src_configure() {
 }
 
 src_compile() {
-	export ac_cv_header_valgrind_valgrind_h=$(usex valgrind)
-	append-cppflags -DUSE_VALGRIND=$(usex valgrind)
+	unset SHELL #965834
 
 	if tc-is-cross-compiler; then
 		# Build native tools for compiling lisp etc.
@@ -424,6 +441,11 @@ src_test() {
 	# subtests which caused failure. Elements should begin with a %.
 	# e.g. %lisp/gnus/mml-sec-tests.el.
 	local exclude_tests=(
+		# Reason: not yet known (we skipped this in the past but finally
+		# dropped it for Emacs 30 as it seemed to be passing again)
+		# mml-secure-select-preferred-keys-4
+		%lisp/gnus/mml-sec-tests.el
+
 		# Reason: permission denied on /nonexistent
 		# (vc-*-bzr only fails if breezy is installed, as they
 		# try to access cache dirs under /nonexistent)
@@ -440,12 +462,21 @@ src_test() {
 		%lisp/vc/vc-tests.el
 		%lisp/vc/vc-bzr-tests.el
 
+		%lisp/progmodes/eglot-tests.el  #966957
+
+		# Reason: flaky (https://bugs.gnu.org/73441, fails even with the fix)
+		# proced-refine-test
+		%lisp/proced-tests.el
+
+		# Reason: flaky (https://bugs.gnu.org/79056)
+		# tab-bar-tests-quit-restore-window
+		%lisp/tab-bar-tests.el
+
 		# Reason: tries to access network
 		# internet-is-working
 		%src/process-tests.el
 	)
 	use threads || exclude_tests+=(
-			%lisp/progmodes/eglot-tests.el
 			%src/emacs-module-tests.el
 			%src/keyboard-tests.el
 		)
@@ -521,8 +552,7 @@ src_install() {
 	fi
 
 	sed -e "${cdir:+#}/^Y/d" -e "s/^[XY]//" >"${T}/${SITEFILE}" <<-EOF || die
-	X
-	;;; ${EMACS_SUFFIX} site-lisp configuration
+	;;; ${EMACS_SUFFIX} site-lisp configuration  -*-lexical-binding:t-*-
 	X
 	(when (string-equal emacs-version "${FULL_VERSION}")
 	Y  (setq find-function-C-source-directory
@@ -572,8 +602,8 @@ src_install() {
 		own e-mail features are going to be used as an e-mail client
 		(e.g. Rmail), you are strongly encouraged to enable it. If not,
 		Emacs will use its own implementation of movemail; which has
-		fewer features and is less secure. For more information see:
-		https://www.gnu.org/software/emacs/manual/html_node/emacs/Movemail.html"
+		fewer features and is less secure. For more information see the
+		Info node '(emacs)Movemail' in the Emacs manual."
 	fi
 	tc-is-cross-compiler && DOC_CONTENTS+="\\n\\nEmacs did not write
 		a portable dump file due to being cross-compiled.
