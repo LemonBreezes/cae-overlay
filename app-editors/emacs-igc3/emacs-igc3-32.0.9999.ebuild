@@ -221,7 +221,13 @@ src_prepare() {
 	sed -i -e 's/(executable-find "bwrap")/nil/' test/src/emacs-tests.el \
 		test/lisp/emacs-lisp/bytecomp-tests.el || die
 
-	AT_M4DIR=m4 eautoreconf
+	# feature/igc3 introduces a sub-configure under mps/ that needs
+	# build-aux/{config.guess,config.sub,install-sh} copied into
+	# mps/tool/autoconf/build-aux/. That copy is done by autogen.sh after
+	# autoreconf runs, NOT by eautoreconf. Use autogen.sh autoconf here so
+	# the mps sub-configure can find its auxiliary files. --no-check skips
+	# the version-check stanza (autotools.eclass already pins versions).
+	./autogen.sh --no-check autoconf || die "autogen.sh failed"
 }
 
 src_configure() {
